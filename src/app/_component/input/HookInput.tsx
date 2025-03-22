@@ -1,6 +1,5 @@
 import React from 'react';
 import { Close } from '@/icons/generals/Close';
-import { cn } from '@/lib/utils';
 import { Control } from 'react-hook-form';
 import {
   FormControl,
@@ -9,6 +8,7 @@ import {
   FormLabel,
 } from '@/components/ui/form';
 import { InputBase, InputBaseProps } from './InputBase';
+import { cn } from '@/utils';
 
 interface HookInputProps extends InputBaseProps {
   control: Control<any>;

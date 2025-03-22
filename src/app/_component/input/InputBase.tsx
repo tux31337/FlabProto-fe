@@ -8,7 +8,7 @@ import {
   IconProps,
   IconSize,
 } from '@/icons/constants';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils';
 import { useFormField } from '@/components/ui/form';
 import { IconButton } from '../button/IconButton';
 
