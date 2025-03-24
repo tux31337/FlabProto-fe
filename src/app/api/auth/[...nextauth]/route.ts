@@ -58,7 +58,19 @@ export const authOptions: AuthOptions = {
       async authorize(credentials) {
         console.log('credentials', credentials);
 
-        // 하드코딩된 사용자 정보로 인증 (데모용)
+        const response = await fetch(
+          `${process.env.BACKEND_URL}/api/auth/login`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: credentials?.email,
+              password: credentials?.password,
+            }),
+            credentials: 'include',
+          }
+        );
+
         if (
           credentials?.email === 'user@example.com' &&
           credentials?.password === 'password'
@@ -136,7 +148,6 @@ export const authOptions: AuthOptions = {
 
   /**
    * JWT 암호화에 사용할 비밀 키
-   * 환경 변수에서 가져오며, 반드시 안전하게 관리해야 합니다.
    */
   secret: process.env.NEXTAUTH_SECRET,
 };

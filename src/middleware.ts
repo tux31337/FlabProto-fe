@@ -9,7 +9,9 @@ export async function middleware(req: any) {
   // 특정 요청을 middleware가 가로채지 않도록 하기 위한 추가적인 필터링 역할.
   if (
     req.nextUrl.pathname.startsWith('/_next') ||
-    req.nextUrl.pathname.startsWith('/api')
+    req.nextUrl.pathname.startsWith('/api') ||
+    req.nextUrl.pathname.startsWith('/img') ||
+    req.nextUrl.pathname.startsWith('/login')
   ) {
     return NextResponse.next();
   }
