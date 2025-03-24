@@ -1,0 +1,18 @@
+import { Meta, Title, IconGallery, IconItem } from '@storybook/blocks';
+import { BadgeIcon, BadgeIconType } from './BadgeIcon';
+
+<Meta title="Badge Icons" />
+
+# Icons
+
+<IconGallery>
+  <IconItem name="Star">
+    <BadgeIcon iconType={BadgeIconType.star} />
+  </IconItem>
+  <IconItem name="Point">
+    <BadgeIcon iconType={BadgeIconType.point} />
+  </IconItem>
+  <IconItem name="Wild Swing Warrior">
+    <BadgeIcon iconType={BadgeIconType.wildSwingWarrior} />
+  </IconItem>
+</IconGallery>
