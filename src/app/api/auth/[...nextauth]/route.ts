@@ -1,164 +1,259 @@
-/**
- * Next.js API Route: [...nextauth]/route.ts
- *
- * 이 파일은 Next.js의 App Router에서 NextAuth.js 인증 API 엔드포인트를 설정합니다.
- * 파일 경로 [...]는 동적 경로 세그먼트로, NextAuth가 여러 엔드포인트(/api/auth/signin, /api/auth/callback 등)를 처리할 수 있게 합니다.
- *
- * 실행 시점:
- * 1. 사용자가 로그인 페이지에서 로그인 폼을 제출할 때
- * 2. 세션 검증이 필요할 때 (페이지 로드, 보호된 라우트 접근 시)
- * 3. 로그아웃 요청 시
- */
-
 import NextAuth, { AuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
+// NextAuth 타입 확장
 declare module 'next-auth' {
   interface User {
-    refreshToken?: string; // JWT를 위한 token 속성 추가
+    id: string;
+    name?: string;
+    email?: string;
     accessToken?: string;
-    expiredAt?: number;
+    refreshToken?: string;
+    expiresIn?: number;
+    refreshTokenExpiresIn?: number;
   }
 
   interface Session {
     user: User;
+    error?: string;
   }
 }
 
-/**
- * NextAuth 설정 객체
- * 인증 관련 모든 설정을 포함하며, 미들웨어나 다른 컴포넌트에서 재사용할 수 있습니다.
- */
+declare module 'next-auth/jwt' {
+  interface JWT {
+    id: string;
+    name?: string;
+    email?: string;
+    accessToken?: string;
+    refreshToken?: string;
+    expiresIn?: number;
+    refreshTokenExpiresIn?: number;
+    error?: string;
+  }
+}
+
 export const authOptions: AuthOptions = {
-  /**
-   * 인증 제공자 설정
-   * 여러 인증 방식(OAuth, Email, Credentials 등)을 배열로 설정할 수 있습니다.
-   * 현재는 이메일/비밀번호 기반의 Credentials 제공자만 사용합니다.
-   */
   providers: [
     CredentialsProvider({
-      // 제공자 이름 (UI에 표시됨)
       name: 'Credentials',
-
-      // 로그인 폼에서 수집할 필드 정의
       credentials: {
         email: { label: 'Email', type: 'text' },
         password: { label: 'Password', type: 'password' },
+        kakaoCode: { label: 'Kakao Code', type: 'text' },
+        isKakaoCallback: { label: 'Is Kakao Callback', type: 'text' },
       },
 
-      /**
-       * authorize 함수: 사용자 인증 로직
-       * 실행 시점: 사용자가 로그인 폼을 제출할 때 자동으로 호출됩니다.
-       *
-       * @param credentials - 로그인 폼에서 제출된 사용자 입력값
-       * @returns 인증 성공 시 사용자 객체, 실패 시 null
-       *
-       * 참고: 실제 환경에서는 데이터베이스 조회나 외부 API 호출로 사용자를 검증해야 합니다.
-       */
       async authorize(credentials) {
-        console.log('credentials', credentials);
+        // 카카오 로그인 처리
+        if (credentials?.isKakaoCallback === 'true' && credentials.kakaoCode) {
+          try {
+            // 백엔드에 카카오 인증 코드 전송
+            const response = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/auth/kakao`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: credentials.kakaoCode }),
+                credentials: 'include',
+              }
+            );
 
-        const response = await fetch(
-          `${process.env.BACKEND_URL}/api/auth/login`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: credentials?.email,
-              password: credentials?.password,
-            }),
-            credentials: 'include',
+            if (!response.ok) {
+              console.error('카카오 인증 실패:', response.status);
+              return null;
+            }
+
+            const data = await response.json();
+            console.log('카카오 인증 응답:', data);
+
+            // 백엔드 응답에서 사용자 정보 추출
+            return {
+              id: data.userId || '1',
+              name: data.name || 'Kakao User',
+              email: data.email || 'kakao@example.com',
+              accessToken: data.accessToken || data.access_token,
+              refreshToken: data.refreshToken || data.refresh_token,
+              expiresIn: data.expires_in,
+              refreshTokenExpiresIn: data.refreshTokenExpiresIn,
+            };
+          } catch (error) {
+            console.error('카카오 로그인 오류:', error);
+            return null;
           }
-        );
-
-        if (
-          credentials?.email === 'user@example.com' &&
-          credentials?.password === 'password'
-        ) {
-          return {
-            id: '1',
-            name: 'User',
-            email: 'user@example.com',
-          }; // 인증 성공 시 반환할 사용자 정보
         }
+
+        // 일반 이메일/비밀번호 로그인 처리
+        if (credentials?.email && credentials?.password) {
+          try {
+            const response = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email: credentials.email,
+                  password: credentials.password,
+                }),
+                credentials: 'include',
+              }
+            );
+
+            if (!response.ok) {
+              console.error('로그인 실패:', response.status);
+              return null;
+            }
+
+            const data = await response.json();
+            console.log('로그인 응답:', data);
+
+            // 백엔드 응답에서 사용자 정보 추출
+            return {
+              id: data.userId || '1',
+              name: data.name || 'User',
+              email: data.email || credentials.email,
+              accessToken: data.accessToken || data.access_token,
+              refreshToken: data.refreshToken || data.refresh_token,
+              expiresIn: data.expiresIn,
+              refreshTokenExpiresIn: data.refreshTokenExpiresIn,
+            };
+          } catch (error) {
+            console.error('로그인 오류:', error);
+            return null;
+          }
+        }
+
         return null; // 인증 실패
       },
     }),
   ],
 
-  /**
-   * 세션 설정
-   * 세션 관리 방식과 유효 기간을 정의합니다.
-   */
   session: {
     strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30일 (초 단위)
   },
 
-  /**
-   * 콜백 함수들
-   * NextAuth의 다양한 이벤트에 대한 핸들러를 정의합니다.
-   */
   callbacks: {
-    /**
-     * redirect 콜백: 인증 후 리다이렉트 처리
-     * 실행 시점: 로그인 성공/실패 후, 로그아웃 후 등 리다이렉트가 필요할 때
-     *
-     * @param url - 리다이렉트할 URL
-     * @param baseUrl - 애플리케이션 기본 URL
-     * @returns 최종 리다이렉트 URL
-     */
+    // 리다이렉트 콜백: 로그인 후 리다이렉트 처리
     async redirect({ url, baseUrl }) {
-      // 외부 URL로의 리다이렉트 방지 (보안 목적)
       if (!url.startsWith(baseUrl)) {
-        return baseUrl + '/login'; // 로그인 페이지로 리다이렉트
+        return baseUrl;
       }
       return url;
     },
 
+    // JWT 콜백: 토큰 생성 및 갱신 처리
     async jwt({ token, user }) {
+      // 1. 초기 로그인 시: 사용자 정보로 토큰 설정
       if (user) {
-        token.id = user.id;
-        token.email = user.email;
-        token.accessToken = user.accessToken;
-        token.refreshToken = user.refreshToken;
-        token.accessTokenExpires = user.expiredAt;
+        console.log('로그인 성공: JWT 토큰 초기 설정');
+        return {
+          ...token,
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          accessToken: user.accessToken,
+          refreshToken: user.refreshToken,
+          expiresIn: user.expiresIn,
+          refreshTokenExpiresIn: user.refreshTokenExpiresIn,
+        };
       }
 
-      if (user.expiredAt) {
-        if (Date.now() < user.expiredAt) {
-          return token;
+      // 2. 액세스 토큰이 아직 유효한 경우: 그대로 사용
+      if (token.expiresIn && Date.now() < token.expiresIn) {
+        return token;
+      }
+
+      // 3. 액세스 토큰 만료 + 리프레시 토큰 유효: 토큰 갱신
+      if (
+        token.refreshToken &&
+        token.refreshTokenExpiresIn &&
+        Date.now() < token.refreshTokenExpiresIn
+      ) {
+        console.log('액세스 토큰 만료됨, 리프레시 토큰 유효함');
+        console.log('현재 시간:', Date.now());
+        console.log('액세스 토큰 만료 시간:', token.expiresIn);
+        console.log('리프레시 토큰 만료 시간:', token.refreshTokenExpiresIn);
+
+        try {
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ refreshToken: token.refreshToken }),
+              credentials: 'include',
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(`토큰 갱신 실패: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          console.log(
+            '이게 새로우웅우우운 토큰인데 시간이 업데이트가 안되는것인가',
+            data
+          );
+
+          console.log('ususususususer', user);
+          console.log('totototototken', token);
+          // 새로운 토큰 정보로 업데이트
+          return {
+            ...token,
+            id: token.id,
+            accessToken: data.accessToken || data.access_token,
+            expiresIn: data.expires_in,
+            refreshToken:
+              data.refreshToken || data.refresh_token || token.refreshToken,
+            refreshTokenExpiresIn:
+              data.refreshTokenExpiresIn || token.refreshTokenExpiresIn,
+            error: undefined, // 이전 오류 상태 초기화
+          };
+        } catch (error) {
+          console.error('토큰 갱신 오류:', error);
+          return { ...token, error: 'RefreshTokenError' };
         }
       }
 
-      // 토큰 갱신로직 필요.
-      return token;
+      // 4. 리프레시 토큰도 만료된 경우: 오류 상태 설정
+      console.log('리프레시 토큰 만료: 재로그인 필요');
+      return { ...token, error: 'RefreshTokenExpired' };
     },
 
-    // 필요에 따라 session, jwt 등의 추가 콜백을 구현할 수 있습니다.
+    // 세션 콜백: JWT 토큰에서 세션 생성
+    async session({ session, token }) {
+      // JWT 토큰의 정보를 세션에 복사
+      session.user = {
+        id: token.id,
+        name: token.name,
+        email: token.email,
+        accessToken: token.accessToken,
+        refreshToken: token.refreshToken,
+        expiresIn: token.expiresIn,
+        refreshTokenExpiresIn: token.refreshTokenExpiresIn,
+      };
+
+      // 오류 상태가 있으면 세션에도 추가
+      if (token.error) {
+        session.error = token.error;
+      }
+
+      return session;
+    },
   },
 
-  /**
-   * 커스텀 페이지 경로
-   * NextAuth 기본 페이지 대신 사용할 커스텀 페이지 경로를 지정합니다.
-   */
   pages: {
-    signIn: '/login', // 로그인 페이지 경로
-    error: '/error', // 인증 오류 페이지 경로
+    signIn: '/login',
+    error: '/error',
   },
 
-  /**
-   * JWT 암호화에 사용할 비밀 키
-   */
+  // 개발 환경에서만 디버그 모드 활성화
+  debug: process.env.NODE_ENV === 'development',
+
+  // JWT 암호화에 사용할 비밀 키
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-/**
- * Next.js App Router API 핸들러
- * GET과 POST 요청을 모두 처리하는 NextAuth 핸들러를 생성합니다.
- *
- * 실행 시점:
- * - GET: 세션 정보 조회, 로그인 페이지 접근, 콜백 처리 등
- * - POST: 로그인 요청, 로그아웃 요청 등
- */
 const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
