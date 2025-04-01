@@ -34,9 +34,18 @@ export async function middleware(req: NextRequest) {
     const token = await getToken({
       req,
       secret: process.env.NEXTAUTH_SECRET,
+      secureCookie: process.env.NODE_ENV === "production",
     });
 
-    // 1. 토큰이 없는 경우: 로그인 페이지로 리다이렉트
+    // 토큰 디버깅 로그
+    console.log(`토큰 정보 (${pathname}):`, {
+      hasToken: !!token,
+      tokenContent: token ? JSON.stringify(token) : 'null',
+      cookiesHeader: req.headers.get('cookie') || 'no cookies',
+      now: new Date().toISOString(),
+    });
+
+    // 토큰이 없는 경우: 로그인 페이지로 리다이렉트
     if (!token) {
       console.log(
         `인증되지 않은 접근: ${pathname} → 로그인 페이지로 리다이렉트`
@@ -46,35 +55,7 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // 2. 토큰에 오류가 있는 경우: 로그인 페이지로 리다이렉트
-    if (token.error) {
-      console.log(
-        `토큰 오류 발생: ${token.error} → 로그인 페이지로 리다이렉트`
-      );
-      return NextResponse.redirect(new URL('/login', req.url));
-    }
-
-    // 3. 토큰 만료 확인 및 처리
-    const now = Date.now();
-
-    // 액세스 토큰 만료 확인
-    const isAccessTokenExpired = token.expiresIn
-      ? now >= token.expiresIn
-      : true;
-
-    // 리프레시 토큰 유효성 확인
-    const hasValidRefreshToken =
-      token.refreshToken && token.refreshTokenExpiresIn
-        ? now < token.refreshTokenExpiresIn
-        : false;
-
-    // 액세스 토큰과 리프레시 토큰 모두 만료된 경우
-    if (isAccessTokenExpired && !hasValidRefreshToken) {
-      console.log('모든 토큰 만료: 로그인 페이지로 리다이렉트');
-      return NextResponse.redirect(new URL('/login', req.url));
-    }
-
-    // 인증이 유효하거나 리프레시 가능한 경우 접근 허용
+    // 토큰이 있으면 페이지 접근 허용
     return NextResponse.next();
   } catch (error) {
     // 오류 처리: 로그인 페이지로 리다이렉트
