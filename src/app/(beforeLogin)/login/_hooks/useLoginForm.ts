@@ -25,18 +25,18 @@ export function useLoginForm() {
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
 
-    // 로그인 API 요청 (예시)
+    // 로그인 API 요청
     try {
       const response = await signIn('credentials', {
         email: data.email,
         password: data.password,
-        redirect: false,
+        redirect: true,
+        callbackUrl: '/', // 로그인 성공 후 리다이렉트할 경로
       });
 
       console.log('SignIn Response:', response);
     } catch (err) {
       console.error('Login Error:', err);
-    } finally {
       setIsLoading(false);
     }
   };
