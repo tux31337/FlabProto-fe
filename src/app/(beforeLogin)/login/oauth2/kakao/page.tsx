@@ -1,10 +1,11 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { signIn } from 'next-auth/react';
 
-export default function KakaoCallback() {
+// 실제 콜백 로직을 처리하는 컴포넌트
+function KakaoCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const code = searchParams.get('code');
@@ -48,5 +49,23 @@ export default function KakaoCallback() {
     <div className="flex justify-center items-center h-screen">
       로그인 처리 중...
     </div>
+  );
+}
+
+// 기본 로딩 컴포넌트
+function LoadingComponent() {
+  return (
+    <div className="flex justify-center items-center h-screen">
+      로그인 준비 중...
+    </div>
+  );
+}
+
+// 주 컴포넌트
+export default function KakaoCallback() {
+  return (
+    <Suspense fallback={<LoadingComponent />}>
+      <KakaoCallbackContent />
+    </Suspense>
   );
 }
