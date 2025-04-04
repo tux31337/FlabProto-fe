@@ -1,8 +1,8 @@
-import NextAuth, { AuthOptions } from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
+import NextAuth, { AuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
 
 // NextAuth 타입 확장
-declare module 'next-auth' {
+declare module "next-auth" {
   interface User {
     id: string;
     name?: string;
@@ -19,7 +19,7 @@ declare module 'next-auth' {
   }
 }
 
-declare module 'next-auth/jwt' {
+declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     name?: string;
@@ -38,30 +38,34 @@ async function handleAuthentication(endpoint: string, payload: any) {
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
       {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       }
     );
 
-    if (!response.ok) {
+    const responseData = await response.json();
+
+    if (!response.ok || responseData.status === "error") {
       console.error(`인증 실패: ${response.status}`);
+      console.error("에러 메시지:", responseData.message);
+      console.error("에러 상세:", responseData.error);
       return null;
     }
 
-    const data = await response.json();
+    const data = responseData.data || responseData;
 
     return {
-      id: data.user_id || '1',
-      name: data.name || 'User',
-      email: data.email || '',
+      id: data.user_id || "1",
+      name: data.name || "User",
+      email: data.email || "",
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresIn: data.expires_in,
       refreshTokenExpiresIn: data.refresh_token_expires_in,
     };
   } catch (error) {
-    console.error('인증 오류:', error);
+    console.error("인증 오류:", error);
     return null;
   }
 }
@@ -72,10 +76,10 @@ async function refreshAccessToken(token: any) {
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh`,
       {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refreshToken: token.refreshToken }),
-        credentials: 'include',
+        credentials: "include",
       }
     );
 
@@ -97,44 +101,44 @@ async function refreshAccessToken(token: any) {
       ...token,
       accessToken: data.access_token,
       expiresIn:
-        typeof data.expires_in === 'number'
+        typeof data.expires_in === "number"
           ? calculateExpiryTime(data.expires_in)
           : Date.now() + 30 * 60 * 1000, // 기본값 30분
       refreshToken: data.refresh_token || token.refreshToken,
       refreshTokenExpiresIn:
-        typeof data.refresh_token_expires_in === 'number'
+        typeof data.refresh_token_expires_in === "number"
           ? calculateExpiryTime(data.refresh_token_expires_in)
           : Date.now() + 7 * 24 * 60 * 60 * 1000, // 기본값 7일
       error: undefined, // 오류 상태 초기화
     };
   } catch (error) {
-    console.error('토큰 갱신 오류:', error);
-    return { ...token, error: 'RefreshTokenError' };
+    console.error("토큰 갱신 오류:", error);
+    return { ...token, error: "RefreshTokenError" };
   }
 }
 
 export const authOptions: AuthOptions = {
   providers: [
     CredentialsProvider({
-      name: 'Credentials',
+      name: "Credentials",
       credentials: {
-        email: { label: 'Email', type: 'text' },
-        password: { label: 'Password', type: 'password' },
-        kakaoCode: { label: 'Kakao Code', type: 'text' },
-        isKakaoCallback: { label: 'Is Kakao Callback', type: 'text' },
+        email: { label: "Email", type: "text" },
+        password: { label: "Password", type: "password" },
+        kakaoCode: { label: "Kakao Code", type: "text" },
+        isKakaoCallback: { label: "Is Kakao Callback", type: "text" },
       },
 
       async authorize(credentials) {
         // 카카오 로그인 처리
-        if (credentials?.isKakaoCallback === 'true' && credentials.kakaoCode) {
-          return handleAuthentication('/api/auth/kakao', {
+        if (credentials?.isKakaoCallback === "true" && credentials.kakaoCode) {
+          return handleAuthentication("/api/auth/kakao", {
             code: credentials.kakaoCode,
           });
         }
 
         // 일반 이메일/비밀번호 로그인 처리
         if (credentials?.email && credentials?.password) {
-          return handleAuthentication('/api/auth/login', {
+          return handleAuthentication("/api/auth/login", {
             email: credentials.email,
             password: credentials.password,
           });
@@ -146,7 +150,7 @@ export const authOptions: AuthOptions = {
   ],
 
   session: {
-    strategy: 'jwt',
+    strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30일
     updateAge: 24 * 60 * 60, // 24시간마다 세션 갱신
   },
@@ -188,8 +192,8 @@ export const authOptions: AuthOptions = {
       }
 
       // 4. 리프레시 토큰도 만료된 경우
-      console.log('리프레시 토큰 만료: 재로그인 필요');
-      return { ...token, error: 'RefreshTokenExpired' };
+      console.log("리프레시 토큰 만료: 재로그인 필요");
+      return { ...token, error: "RefreshTokenExpired" };
     },
 
     // 세션 콜백: JWT 토큰에서 세션 생성
@@ -215,8 +219,8 @@ export const authOptions: AuthOptions = {
   },
 
   pages: {
-    signIn: '/login',
-    error: '/error',
+    signIn: "/login",
+    error: "/error",
   },
 
   secret: process.env.NEXTAUTH_SECRET,
