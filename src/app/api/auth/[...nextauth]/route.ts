@@ -49,12 +49,15 @@ async function handleAuthentication(endpoint: string, payload: any) {
       return null;
     }
 
-    const data = await response.json();
+    const responseData = await response.json();
+    // API 응답 구조에 맞게 수정 (data 필드 내부의 값을 사용)
+    const data = responseData.data || responseData;
 
+    console.log('로그인 응답 데이터:', responseData);
     return {
-      id: data.user_id || '1',
-      name: data.name || 'User',
-      email: data.email || '',
+      id: data.userId || data.user_id,
+      name: data.name,
+      email: data.email,
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresIn: data.expires_in,
@@ -87,9 +90,10 @@ async function refreshAccessToken(token: any) {
 
     // 만료 시간 계산 함수
     const calculateExpiryTime = (expiresIn: number) => {
-      return expiresIn * 1000 > Date.now()
-        ? expiresIn
-        : Date.now() + expiresIn * 1000;
+      // 이미 타임스탬프 형식(밀리초)인지 확인
+      return expiresIn > Date.now() + 1000000
+        ? expiresIn // 이미 미래의 타임스탬프라면 그대로 사용
+        : Date.now() + expiresIn * 1000; // 그렇지 않으면 현재 시간 + 초 단위 만료 시간
     };
 
     // 새로운 토큰 정보로 업데이트
@@ -175,8 +179,19 @@ export const authOptions: AuthOptions = {
 
       // 2. 액세스 토큰이 아직 유효한 경우
       if (token.expiresIn && Date.now() < token.expiresIn) {
+        console.log(
+          '액세스 토큰 유효함, 만료일:',
+          new Date(token.expiresIn).toISOString()
+        );
         return token;
       }
+
+      console.log(
+        '액세스 토큰 만료됨. 현재:',
+        new Date().toISOString(),
+        '만료일:',
+        token.expiresIn ? new Date(token.expiresIn).toISOString() : '없음'
+      );
 
       // 3. 액세스 토큰 만료 + 리프레시 토큰 유효
       if (
@@ -184,8 +199,21 @@ export const authOptions: AuthOptions = {
         token.refreshTokenExpiresIn &&
         Date.now() < token.refreshTokenExpiresIn
       ) {
+        console.log(
+          '리프레시 토큰 유효함, 만료일:',
+          new Date(token.refreshTokenExpiresIn).toISOString()
+        );
         return refreshAccessToken(token);
       }
+
+      console.log(
+        '리프레시 토큰 만료됨 또는 없음. 현재:',
+        new Date().toISOString(),
+        '만료일:',
+        token.refreshTokenExpiresIn
+          ? new Date(token.refreshTokenExpiresIn).toISOString()
+          : '없음'
+      );
 
       // 4. 리프레시 토큰도 만료된 경우
       console.log('리프레시 토큰 만료: 재로그인 필요');

@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Button } from "@/app/_component/button/Button";
-import OAuthScript from "./OAuthScript";
+import { useState } from 'react';
+import { Button } from '@/app/_component/button/Button';
+import OAuthScript from './OAuthScript';
 
 export default function OAuthLoginButtonList() {
   const [isKakaoLoaded, setIsKakaoLoaded] = useState(false);
@@ -14,7 +14,7 @@ export default function OAuthLoginButtonList() {
 
   const loginWithKakao = () => {
     if (!window.Kakao || !window.Kakao.isInitialized()) {
-      console.error("Kakao SDK is not loaded yet");
+      console.error('Kakao SDK is not loaded yet');
       return;
     }
 

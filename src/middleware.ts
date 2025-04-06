@@ -33,6 +33,8 @@ export async function middleware(request: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET,
   });
 
+  console.log('token', token);
+
   // 1. 토큰이 없는 경우 (로그인되지 않은 경우) 로그인 페이지로 리다이렉트
   if (!token) {
     const url = new URL('/login', request.url);
@@ -40,25 +42,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 2. 토큰 에러 확인 (리프레시 토큰 만료 등)
-  if (token.error) {
-    console.log('토큰 에러 감지:', token.error);
-    const url = new URL('/login', request.url);
-    url.searchParams.set('error', token.error as string);
-    url.searchParams.set('callbackUrl', encodeURI(request.url));
-    return NextResponse.redirect(url);
-  }
-
   // 3. 액세스 토큰 만료 확인
   if (token.expiresIn && Date.now() >= token.expiresIn) {
+    console.log('미들웨어: 액세스 토큰 만료됨. 현재:', new Date().toISOString(), '만료일:', new Date(token.expiresIn).toISOString());
+    
     // refreshToken이 없거나 만료된 경우
     if (
       !token.refreshToken ||
-      (token.refreshTokenExpiresIn && Date.now() >= token.refreshTokenExpiresIn)
+      (token.refreshTokenExpiresIn && Date.now() >= token.refreshTokenExpiresIn) ||
+      token.error === 'RefreshTokenExpired' || token.error === 'RefreshTokenError'
     ) {
-      console.log('리프레시 토큰 만료 또는 없음');
+      console.log('미들웨어: 리프레시 토큰 만료됨 또는 오류 발생', token.error);
       const url = new URL('/login', request.url);
-      url.searchParams.set('error', 'RefreshTokenExpired');
+      url.searchParams.set('error', token.error || 'RefreshTokenExpired');
       url.searchParams.set('callbackUrl', encodeURI(request.url));
       return NextResponse.redirect(url);
     }

@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from './_component/AuthProvider';
 import OAuthScript from './(beforeLogin)/login/_component/OAuthScript';
+import Header from './_component/header/Header';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from './api/auth/[...nextauth]/route';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -25,7 +28,7 @@ declare global {
   }
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -35,7 +38,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <div className="flex flex-col min-h-screen">
+            <Header initialSession={!!(await getServerSession(authOptions))} />
+            <main className="flex-grow">
+              {children}
+            </main>
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );
