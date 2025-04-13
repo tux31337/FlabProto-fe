@@ -33,36 +33,35 @@ export async function middleware(request: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET,
   });
 
-  console.log('token', token);
 
   // 1. 토큰이 없는 경우 (로그인되지 않은 경우) 로그인 페이지로 리다이렉트
-  if (!token) {
-    const url = new URL('/login', request.url);
-    url.searchParams.set('callbackUrl', encodeURI(request.url));
-    return NextResponse.redirect(url);
-  }
+  // if (!token) {
+  //   const url = new URL('/login', request.url);
+  //   url.searchParams.set('callbackUrl', encodeURI(request.url));
+  //   return NextResponse.redirect(url);
+  // }
 
   // 3. 액세스 토큰 만료 확인
-  if (token.expiresIn && Date.now() >= token.expiresIn) {
-    console.log('미들웨어: 액세스 토큰 만료됨. 현재:', new Date().toISOString(), '만료일:', new Date(token.expiresIn).toISOString());
+  // if (token.expiresIn && Date.now() >= token.expiresIn) {
+  //   console.log('미들웨어: 액세스 토큰 만료됨. 현재:', new Date().toISOString(), '만료일:', new Date(token.expiresIn).toISOString());
     
-    // refreshToken이 없거나 만료된 경우
-    if (
-      !token.refreshToken ||
-      (token.refreshTokenExpiresIn && Date.now() >= token.refreshTokenExpiresIn) ||
-      token.error === 'RefreshTokenExpired' || token.error === 'RefreshTokenError'
-    ) {
-      console.log('미들웨어: 리프레시 토큰 만료됨 또는 오류 발생', token.error);
-      const url = new URL('/login', request.url);
-      url.searchParams.set('error', token.error || 'RefreshTokenExpired');
-      url.searchParams.set('callbackUrl', encodeURI(request.url));
-      return NextResponse.redirect(url);
-    }
+  //   // refreshToken이 없거나 만료된 경우
+  //   if (
+  //     !token.refreshToken ||
+  //     (token.refreshTokenExpiresIn && Date.now() >= token.refreshTokenExpiresIn) ||
+  //     token.error === 'RefreshTokenExpired' || token.error === 'RefreshTokenError'
+  //   ) {
+  //     console.log('미들웨어: 리프레시 토큰 만료됨 또는 오류 발생', token.error);
+  //     const url = new URL('/login', request.url);
+  //     url.searchParams.set('error', token.error || 'RefreshTokenExpired');
+  //     url.searchParams.set('callbackUrl', encodeURI(request.url));
+  //     return NextResponse.redirect(url);
+  //   }
 
-    // 리프레시 토큰이 유효하면 next-auth가 자동으로 토큰을 갱신하므로
-    // 여기서는 추가 처리가 필요 없음
-    console.log('액세스 토큰 만료, 자동 갱신 예정');
-  }
+  //   // 리프레시 토큰이 유효하면 next-auth가 자동으로 토큰을 갱신하므로
+  //   // 여기서는 추가 처리가 필요 없음
+  //   console.log('액세스 토큰 만료, 자동 갱신 예정');
+  // }
 
   // 인증된 사용자는 정상적으로 접근 허용
   return NextResponse.next();
