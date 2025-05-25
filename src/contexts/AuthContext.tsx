@@ -43,7 +43,6 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     // 401 오류이고 재시도하지 않은 요청인 경우 토큰 갱신 시도
-    alert(error.response?.status);
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
